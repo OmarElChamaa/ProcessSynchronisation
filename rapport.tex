@@ -1,0 +1,355 @@
+\documentclass[a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{mathpazo}
+\usepackage[scaled]{helvet}
+\usepackage{courier}
+\usepackage[sf,bf]{titlesec}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{tabularx}
+
+\makeatletter
+\newenvironment{expl}{%
+  \begin{list}{}{%
+      \small\itshape%
+      \topsep\z@%
+      \listparindent0pt%\parindent%
+      \parsep0.75\baselineskip%\parskip%
+      \setlength{\leftmargin}{20mm}%
+      \setlength{\rightmargin}{20mm}%
+    }
+  \item[]}%
+  {\end{list}}
+\makeatother
+
+% Indiquez votre prénom (en minuscules) et votre nom (en majuscules)
+\title{Rapport de TP \\ Architecture des systèmes d'exploitation}
+\author{\underline{Omar} \underline{EL CHAMAA}}
+\date{Décembre 2021}
+
+\begin{document}
+
+\maketitle
+
+% Mettez une table des matières si votre rapport contient plus
+% de 3 pages ou si vous ne suivez pas le plan suggéré :
+\tableofcontents
+
+% Dans votre rapport final, supprimez toutes les explications
+% (c'est-à-dire tous les environnements \begin{expl} ... \end{expl}).
+
+
+\section{Introduction}
+
+\begin{expl}
+\setlength{\parindent}{10ex}
+  
+  
+  Pour ce TP, on nous demande d'implémenter un vaccinodrome à taille variable, l'objectif étant d'apprendre à bien manipuler de la mémoire partagée entre processus. 
+  Comme tous les processus peuvent accéder a cette mémoire, il faudrait que les accès à celle ci soit synchronisés, pour cela on utilise les sémaphores.
+\end{expl}
+
+\section{Structure de données}
+
+\subsection{Structures de données partagées}\label{sec-shm}
+
+\begin{expl}
+  Ma mémoire partagée est alors divisée en trois parties, une première structure vaccinodrome, qui contient toutes les sémaphores relative à la synchronisation de l'ouverture du vaccinodrome,sa fermeture, arrivée d'un médecin, et les accès au variables de la mémoire partagée en cas de lecture/écriture si on est en zone critique.Elle contient aussi toutes les informations utiles est nécessaires comme le nombre de médecins max, le nombre de médecins actuels, si le vaccinodrome est ouvert,etc..
+  
+  De plus, j'aurais aussi un tableau de M*Box.
+  Ces boxs seront numérotés de 0 à M-1. Un box contient son numéro, le numéro du médecin auquel il est attribué, et le nom du patient en cours de vaccination.
+  
+  Finalement, j'aurais un tableau de N*Chaise.
+  Les chaises sont aussi numérotées, de 0 à N-1. Une chaise contient le numéro et nom du patient assis dessus, et une sémaphore propre à celle ci pour savoir quand le patient à finit de se faire vacciner.
+
+  
+   
+    \pagebreak
+     Vaccinodrome:
+     
+  \begin{tabularx}{\linewidth}{|l|l|l|X|}
+    \hline
+    % \multicolumn{4}{|l|}{Vaccinodrome
+    %   (\texttt{struct distr\_gelha})}
+    % \\ \hline
+    Champ & Type & Init & Description \\ \hline%
+    m & int & 0 & Médecins actuellement dans le vaccinodrome) \\ \hline%
+    mMax & int & M & Nombre médecins maximal \\ \hline%
+    n & int & N & Nombre sièges \\ \hline%
+    t & int & T & Temps vaccination \\ \hline%
+    patientsEnAttente & int & 0 & Nombre de patients en attente (dans le vaccinodrome) \\ \hline%
+    ouvert & int & 0 & Statut d'ouverture du vaccinodrome (1 ouvert 0 fermé)\\ \hline%
+    sommePatients & int & 0 & Nombre total de patients rentrés dans le vaccinodrome \\ \hline%
+    placeLibre & asem\_t & N & Sémaphore pour signaler une place libre dans le vaccinodrome \\ \hline%
+    patientAttend & asem\_t & 0 & Sémaphore pour signaler un patient en attente \\ \hline%
+    ecritureVax & asem\_t & 1 & Sémaphore pour signaler un accès/modification aux valeurs du vaccinodrome \\ \hline%
+    ecritureSalle & asem\_t & 1 & Sémaphore pour signaler un accès/modification à une chaise \\ \hline%
+    fermeture & asem\_t & 0 & Sémaphore pour s'assurer que tous les médecins ont quittés \\ \hline%
+    
+  \end{tabularx}
+  
+  Box: 
+  \newline
+  \newline
+\begin{tabularx}{\linewidth}{|l|l|l|X|}
+    \hline
+    % \multicolumn{4}{|l|}{Box
+    %   (\texttt{struct distr\_gelha})}
+    % \\ \hline
+    Champ & Type & Init & Description \\ \hline%
+    nbBox & int & i & Numéro du box \\ \hline%
+    nMedecin & int & -1 & Numéro du médecin attribué au box \\ \hline%
+    nom & char[10] & NULL & Nom du patient pris en charge \\ \hline%
+\end{tabularx}
+
+    Chaise:
+    \newline
+    \newline
+\begin{tabularx}{\linewidth}{|l|l|l|X|}
+    \hline
+    % \multicolumn{4}{|l|}{Chaise
+    %   (\texttt{struct distr\_gelha})}
+    % \\ \hline
+    Champ & Type & Init & Description \\ \hline%
+    numPatient & int & -1 & Numéro du patient \\ \hline%
+    medecin & int & -1 & Numéro du médecin attribué au box \\ \hline%
+    nomPatient & char[10] & NULL & Nom du patient en attente \\ \hline%
+    finVaccination & asem\_t & 0 &Sémaphore pour signaler la fin de la vaccination du patient \\ \hline%
+\end{tabularx}
+
+\end{expl}
+
+%\subsection{Structures de données non partagées}
+
+%\begin{expl}
+ % Indiquez toutes les données conservées par les %processus mais non
+ % partagées. La forme est la même que dans la %%%%\end{expl}
+
+\section{Synchronisations}
+
+
+
+\subsection{Arrivée d'un patient}\label{arrivee-patient}
+
+\begin{expl}
+
+    \begin{tabularx}{\linewidth}{|l|l|>{\strut}X|}
+      \hline%
+    n & int  & Nombre sièges \\ \hline%
+    ouvert & int & Statut d'ouverture du vaccinodrome (1 ouvert 0 fermé)\\ \hline%
+    sommePatients & int & Nombre total de patients rentrés dans le vaccinodrome \\ \hline%
+    placeLibre & asem\_t & Sémaphore pour signaler une place libre dans le vaccinodrome \\ \hline%
+    
+    patientAttend & asem\_t & Sémaphore pour signaler un patient en attente \\ \hline%
+    ecritureSalle & asem\_t & Sémaphore pour signaler un accès/modification à une chaise \\ \hline%
+     \hline%
+    \end{tabularx}
+  \begin{verbatim}
+    
+    P = asem_wait
+    V = asem_post 
+    //Ce code est exécuté par le patient 
+    P(placeLibre)
+    si ouvert
+        trouve place est s'installe si possible
+        prends num sommePatients++ 
+        V(patientAttend)
+    sinon 
+        sortir
+        V(PlaceLibre)
+    
+
+    \end{verbatim}
+    Le patient vérifiera si le vaccinodrome est ouvert, et trouve une place si une existe, normalement ça devrait être le cas,car on reçoit le signal placeLibre. Il prends un siège quelconque. Ma solution semble simple mais elle n'est pas la plus optimale car je dois chercher une place dans le tableau.
+\end{expl}
+
+\subsection{Arrivée d'un médecin}
+\begin{tabularx}{\linewidth}{|l|l|>{\strut}X|}
+      \hline%
+        m & int & Nombre de médecins actuels \\ \hline%
+        mMax & int & Nombre de medecins au maximum dans le vaccinodrome \\ \hline%
+        ecritureSalle & asem\_t & Sémaphore pour signaler un accès/modification à une chaise \\ \hline%
+        patientAttend & asem\_t & Sémaphore pour signaler un patient en attente \\ \hline%
+        ecritureVax & asem\_t & Sémaphore pour signaler un accès/modification aux valeurs du vaccinodrome \\ \hline%
+        tabBox & Box & Box qui sera attribué au médecin \\ \hline%
+        
+    \end{tabularx}
+\begin{expl}
+
+  \begin{verbatim}
+  
+  //ce code est exécuté par le médecin
+  P(ouverture)
+  V(ouverture
+  
+  prends box correspondant à son numéro
+  P(ecritureVax)
+  vax->m++
+  si vax->m == vax->mMax 
+        sortir 
+        V(ecritureVax)
+  sinon 
+        box->medecin = vax-> m 
+        V(ecritureVax)
+        P(attendPatient)
+    \end{verbatim}
+    
+    
+\end{expl}
+
+\subsection{Interactions entre patients et médecins}
+
+\begin{tabularx}{\linewidth}{|l|l|>{\strut}X|}
+      \hline%
+        m & int & Nombre de médecins actuels \\ \hline%
+        n & int & Nombre sièges du vaccinodrome \\ \hline%
+        nMedecin & int & Numéro du médecin \\ \hline%
+        ecritureSalle & asem\_t & Sémaphore pour signaler un accès/modification à une chaise \\ \hline%
+        ecritureVax & asem\_t & Sémaphore pour signaler un accès/modification aux valeurs du vaccinodrome \\ \hline%
+        placeLibre & asem\_t & Sémaphore pour signaler une place libre dans le vaccinodrome \\ \hline%
+           patientAttend & asem\_t & Sémaphore pour signaler un patient en attente \\ \hline%
+         
+        tabSalleAttente & chaise & Tableau de chaises\\ \hline%
+        finVaccination & asem\_t & Sémaphore pour signaler que le patient s'est fait vacciner \\ \hline%
+        tabBox & Box & Box attribué au médecin \\ \hline%
+        
+    \end{tabularx}
+
+
+\begin{expl}
+
+\begin{verbatim}
+// Ce code est exécuté par le patient après avoir trouvé sa place
+    
+    V(patientAttend)
+    P(finVaccination)
+    libère sa place
+    chaise->medecin = -1
+    chaise->numpatient = -1
+    chaise->nom = "" ;
+    V(placeLibre)
+    
+
+// Ce code est exécuté par le médecin
+    
+    P(patientAttend)
+    
+    Cherche patient
+    chaise->medecin = nMedecin 
+    box->nom = chaise->nom 
+    
+    V(finVaccination)
+\end{verbatim}
+    
+  J'ai choisi de laisser mes médecins chercher leurs patients dans la salle d'attente, pour cela le médecin attend le signal d'un patient qui attend, puis cherche dans les sièges un patient (le patient ayant envoyé le signal n'est pas sûr d'être choisi, il n'y a pas d'ordre).
+  
+  Il aurait été plus intéressant d'implémenter un ordre de passage qui aurait amélioré l'efficacité du code. Nous aurions 
+  su de cette manière exactement à quelle chaise est assis le prochain patient.  
+  
+  
+  
+\end{expl}
+
+\subsection{Fermeture du vaccinodrome}
+
+\begin{expl}
+
+\begin{tabularx}{\linewidth}{|l|l|>{\strut}X|}
+      \hline%
+        m & int & Nombre de médecins actuels \\ \hline%
+        n & int & Nombre sieges du vaccinodrome \\ \hline%
+        sommePatients & int  & Nombre total de patients rentrés dans le vaccinodrome \\ \hline%
+        ouvert & int & Bool qui décrit le statut d'ouverture du vaccinodrome \\ \hline%
+        fermeture & asem\_t  & Sémaphore pour signaler ouverture \\ \hline%
+        patientAttend & asem\_t & Sémaphore pour signaler un patient en attente \\ \hline%
+    \end{tabularx}
+    
+
+    
+  Ce programme commence par signaler la fermeture aux autres processus(médecin et patient) en modifiant vax->ouvert à 0.
+  Puis on incrémente la sémaphore patientAttend m fois pour que les médecins puissent continuer à s'exécuter s'ils sont bloqués à 
+  la semaphore patientAttend.
+  
+  
+  Le programme fermer va alors attendre que tous les médecins aient fini leurs vaccinations.
+  Une fois les patients vaccinés, le programme poste la sémaphore fermeture.Le programme fermer attend cette sémaphore et incrémente un compteur à chaque réception. 
+  Quand le compteur est égal au nombre de médecins, on sait qu'ils ont tous quitté le vaccinodrome, et on peut alors fermer le vaccinodrome.
+  
+  la partie la plus intéressante à regarder est l'intéraction médecin/fermer.
+  
+  \texttt{fermer}
+  \begin{verbatim}
+    
+// Ce code est exécuté par le médecin
+    
+    P(patientAttend)
+        Il Faut fermer !
+        fini vaccinations 
+    V(fermerture)
+    
+    
+//Ce code est exécuté par fermer
+    
+    vax->ouvert=0
+    V(patientAttend)
+        P(fermeture)*m
+    munmap
+    unlink
+    
+\end{verbatim}
+\end{expl}
+
+\subsection{Patients après fermeture}
+
+\begin{expl}
+  \begin{tabularx}{\linewidth}{|l|l|>{\strut}X|}
+      \hline%
+        ouvert & int & Bool qui décrit le statut d'ouverture du vaccinodrome \\ \hline%
+        patientAttend & asem\_t & Sémaphore pour signaler un patient en attente \\ \hline%
+    \end{tabularx}
+    
+    Les patients en attente dehors essayent de rentrer après avoir été notifiés de la présence d'une place, et ils se rendent compte que le vaccinodrome est fermé, ils rentrent alors chez eux.
+    Les patients qui sont dans la salle d'attente attendent de finir leur circuit normalement, ceux qui attendent dehors ne rentrent plus. 
+    
+\end{expl}
+
+\subsection{Médecins après fermeture}
+
+\begin{expl}
+  \begin{tabularx}{\linewidth}{|l|l|>{\strut}X|}
+      \hline%
+        fermeture & asem\_t  & Sémaphore pour signaler ouverture \\ \hline%
+        ouvert & int & Bool qui décrit le statut d'ouverture du vaccinodrome \\ \hline%
+        patientAttend & asem\_t & Sémaphore pour signaler un patient en attente \\ \hline%
+        patientsEnAttente & int & Patients dans la salle d'attente du vaccinodrome \\ \hline%
+    \end{tabularx}
+     
+    Les médecins vaccinent tous les patients dans la salle d'attente après avoir été notifiés de la fermerture.
+    Quand il ne reste plus de patients, le médecin poste sa fermeture et rentre chez lui.
+\end{expl}
+
+\section{Remarques sur l'implémentation}
+
+\begin{expl}
+  Je suppose que le vaccinodrome doit respecter un nombre maximum n de personnes dans le bâtiment (pour le respect des gestes barrières !), le siège est alors libéré pour le prochain patient seulement quand le patient d'avant est sorti.
+  
+  
+  
+  Le test 200 ne passe pas, je pense que ma procédure de vaccination n'est pas assez rapide/efficace, peut-être
+  parce que mon code pourrait être mieux optimisé. 
+\end{expl}
+
+\section{Conclusion}
+
+\begin{expl}
+  Pour conclure, je trouve que ce TP était très enrichissant et stimulant,
+   surtout d'un point de vue algorithmique, il faut prendre en compte tous les ordres 
+   d'exécutions et cas possibles. 
+  Ce projet m'a poussé à réfléchir à tous les aspects de mon implémentation, et toutes les
+   subtilités de synchronisation comme l'attente active était interdite, ce qui n'était pas le
+    cas dans nos projets précédents à la faculté. Ce TP a sans doute amélioré mes capacités de programmation.
+\end{expl}
+
+\end{document}

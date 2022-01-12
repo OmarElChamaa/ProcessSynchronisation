@@ -1,0 +1,13 @@
+\babel@toc {french}{}
+\contentsline {section}{\numberline {1}Introduction}{1}%
+\contentsline {section}{\numberline {2}Structure de données}{1}%
+\contentsline {subsection}{\numberline {2.1}Structures de données partagées}{1}%
+\contentsline {section}{\numberline {3}Synchronisations}{2}%
+\contentsline {subsection}{\numberline {3.1}Arrivée d'un patient}{2}%
+\contentsline {subsection}{\numberline {3.2}Arrivée d'un médecin}{3}%
+\contentsline {subsection}{\numberline {3.3}Interactions entre patients et médecins}{3}%
+\contentsline {subsection}{\numberline {3.4}Fermeture du vaccinodrome}{4}%
+\contentsline {subsection}{\numberline {3.5}Patients après fermeture}{4}%
+\contentsline {subsection}{\numberline {3.6}Médecins après fermeture}{4}%
+\contentsline {section}{\numberline {4}Remarques sur l'implémentation}{4}%
+\contentsline {section}{\numberline {5}Conclusion}{5}%
